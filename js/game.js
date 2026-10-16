@@ -1,42 +1,74 @@
-
 /* ============================================
-   VOLTX Racing — Game Engine
-   Prototype v0.1
-   Three.js + JavaScript
+   VOLTX Racing v0.2
+   Three.js Driving Prototype
    ============================================ */
 
 import * as THREE from
   "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
 
-// --------------------------------------------
-// 1. DOM ELEMENTS
-// --------------------------------------------
+// ============================================
+// 1. DOM
+// ============================================
 
-const game = document.getElementById("game");
-const speedElement = document.getElementById("speed");
-const speedBar = document.getElementById("speedBar");
-const gearElement = document.getElementById("gear");
-const directionElement = document.getElementById("direction");
-const loadingElement = document.getElementById("loading");
-const errorElement = document.getElementById("error");
+const $ = (selector) => document.querySelector(selector);
 
-const cameraButton = document.getElementById("cameraBtn");
-const resetButton = document.getElementById("resetBtn");
-const gearButton = document.getElementById("gearBtn");
+const game = $("#game");
+const speedElement = $("#speed");
+const speedBar = $("#speedBar");
+const gearElement = $("#gear");
+const gearInfo = $("#gearInfo");
+const directionElement = $("#direction");
+const loadingElement = $("#loading");
+const errorElement = $("#error");
 
-// --------------------------------------------
-// 2. GAME SETTINGS
-// --------------------------------------------
+const cameraButton = $("#cameraBtn");
+const resetButton = $("#resetBtn");
+const gearButton = $("#gearBtn");
+const tiltButton = $("#tiltBtn");
+
+// ============================================
+// 2. SETTINGS AND SAVED DATA
+// ============================================
 
 const SETTINGS = {
-  maxSpeed: 220,
-  acceleration: 34,
-  braking: 85,
-  drag: 8,
-  steeringSpeed: 1.45,
+  maxSpeed: 220 / 3.6,
+  maxReverseSpeed: 35 / 3.6,
+  acceleration: 12,
+  braking: 24,
+  drag: 1.8,
+  rollingResistance: 0.4,
+  steeringSpeed: 1.4,
   roadWidth: 18,
-  roadLength: 12000
+  roadLength: 12000,
+  maxPixelRatio: 1.5
 };
+
+function loadSettings() {
+  try {
+    return JSON.parse(
+      localStorage.getItem("voltx-settings") || "{}"
+    );
+  } catch {
+    return {};
+  }
+}
+
+const savedSettings = loadSettings();
+
+function saveSettings() {
+  try {
+    localStorage.setItem("voltx-settings", JSON.stringify({
+      cameraMode,
+      reverseGear
+    }));
+  } catch (error) {
+    console.warn("Could not save settings:", error);
+  }
+}
+
+// ============================================
+// 3. GAME STATE
+// ============================================
 
 const controls = {
   gas: false,
@@ -45,15 +77,23 @@ const controls = {
   right: false
 };
 
-let speed = 0;           // m/s, signed for forward/reverse
+let speed = 0;
 let steeringAngle = 0;
 let reverseGear = false;
 let cameraMode = 0;
-let elapsedTime = 0;
+let tiltEnabled = false;
+let tiltSteering = 0;
 
-// --------------------------------------------
-// 3. SCENE, CAMERA AND RENDERER
-// --------------------------------------------
+const cameraModes = [
+  "خلف السيارة",
+  "داخل السيارة",
+  "مقدمة السيارة",
+  "سينمائية"
+];
+
+// ============================================
+// 4. THREE.JS SETUP
+// ============================================
 
 const scene = new THREE.Scene();
 
@@ -73,7 +113,7 @@ const renderer = new THREE.WebGLRenderer({
 });
 
 renderer.setPixelRatio(
-  Math.min(window.devicePixelRatio || 1, 1.5)
+  Math.min(window.devicePixelRatio || 1, SETTINGS.maxPixelRatio)
 );
 
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -81,42 +121,29 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 
-// Keep the 3D world behind the game's interface.
-renderer.domElement.style.zIndex = "0";
 renderer.domElement.style.position = "absolute";
 renderer.domElement.style.inset = "0";
+renderer.domElement.style.zIndex = "0";
 
 game.prepend(renderer.domElement);
 
-document.querySelectorAll(
-  ".topbar, .hud, .controls, .utility-buttons, .bottom-info"
-).forEach(element => {
-  element.style.zIndex = "2";
-});
+// ============================================
+// 5. LIGHTING
+// ============================================
 
-// --------------------------------------------
-// 4. LIGHTING
-// --------------------------------------------
-
-const hemisphereLight = new THREE.HemisphereLight(
+scene.add(new THREE.HemisphereLight(
   0xd8efff,
   0x59664c,
-  2.0
-);
+  2
+));
 
-scene.add(hemisphereLight);
-
-const sunlight = new THREE.DirectionalLight(
-  0xfff0d5,
-  3.0
-);
-
+const sunlight = new THREE.DirectionalLight(0xfff0d5, 3);
 sunlight.position.set(-40, 100, 30);
 scene.add(sunlight);
 
-// --------------------------------------------
-// 5. MATERIALS
-// --------------------------------------------
+// ============================================
+// 6. MATERIALS
+// ============================================
 
 function makeMaterial(color, options = {}) {
   return new THREE.MeshStandardMaterial({
@@ -150,12 +177,15 @@ const materials = {
   taillight: new THREE.MeshBasicMaterial({ color: 0xff172b })
 };
 
-// --------------------------------------------
-// 6. WORLD AND ROAD
-// --------------------------------------------
+// ============================================
+// 7. WORLD
+// ============================================
 
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(2000, SETTINGS.roadLength),
+  new THREE.PlaneGeometry(
+    2000,
+    SETTINGS.roadLength
+  ),
   materials.grass
 );
 
@@ -185,10 +215,14 @@ road.position.set(
 
 scene.add(road);
 
-// Road shoulders.
+// Road edges.
 for (const side of [-1, 1]) {
   const shoulder = new THREE.Mesh(
-    new THREE.BoxGeometry(0.45, 0.04, SETTINGS.roadLength),
+    new THREE.BoxGeometry(
+      0.45,
+      0.04,
+      SETTINGS.roadLength
+    ),
     materials.shoulder
   );
 
@@ -201,11 +235,15 @@ for (const side of [-1, 1]) {
   scene.add(shoulder);
 }
 
-// Dashed center line.
+// Center markings.
 const roadMarkings = new THREE.Group();
 scene.add(roadMarkings);
 
-for (let z = 350; z > -SETTINGS.roadLength; z -= 17) {
+for (
+  let z = 350;
+  z > -SETTINGS.roadLength;
+  z -= 17
+) {
   const dash = new THREE.Mesh(
     new THREE.BoxGeometry(0.16, 0.025, 7),
     materials.line
@@ -215,22 +253,29 @@ for (let z = 350; z > -SETTINGS.roadLength; z -= 17) {
   roadMarkings.add(dash);
 }
 
-// --------------------------------------------
-// 7. SIMPLE LOW-POLY SCENERY
-// --------------------------------------------
+// ============================================
+// 8. SCENERY
+// ============================================
 
 const scenery = new THREE.Group();
 scene.add(scenery);
 
-const treeTrunkMaterial = makeMaterial(0x725039);
-const treeLeafMaterial = makeMaterial(0x2c693b);
+const trunkMaterial = makeMaterial(0x725039);
+const leafMaterial = makeMaterial(0x2c693b);
+
+const buildingMaterials = [
+  makeMaterial(0xb5b7b8),
+  makeMaterial(0xc4ad91),
+  makeMaterial(0x8e9eaa),
+  makeMaterial(0xd0c7b5)
+];
 
 function createTree(x, z, scale = 1) {
   const tree = new THREE.Group();
 
   const trunk = new THREE.Mesh(
     new THREE.CylinderGeometry(0.15, 0.24, 1.7, 6),
-    treeTrunkMaterial
+    trunkMaterial
   );
 
   trunk.position.y = 0.85;
@@ -238,7 +283,7 @@ function createTree(x, z, scale = 1) {
 
   const leaves = new THREE.Mesh(
     new THREE.ConeGeometry(1.15, 2.8, 7),
-    treeLeafMaterial
+    leafMaterial
   );
 
   leaves.position.y = 2.65;
@@ -250,13 +295,6 @@ function createTree(x, z, scale = 1) {
   scenery.add(tree);
 }
 
-const buildingMaterials = [
-  makeMaterial(0xb5b7b8),
-  makeMaterial(0xc4ad91),
-  makeMaterial(0x8e9eaa),
-  makeMaterial(0xd0c7b5)
-];
-
 function createBuilding(x, z, width, height, depth, material) {
   const building = new THREE.Mesh(
     new THREE.BoxGeometry(width, height, depth),
@@ -267,11 +305,9 @@ function createBuilding(x, z, width, height, depth, material) {
   scenery.add(building);
 }
 
-// Seeded-looking, evenly distributed roadside scenery.
 for (let z = 300; z > -SETTINGS.roadLength + 300; z -= 24) {
   for (const side of [-1, 1]) {
-    const offset = 12 + Math.random() * 20;
-    const x = side * offset;
+    const x = side * (12 + Math.random() * 20);
 
     if (Math.random() < 0.78) {
       createTree(
@@ -282,16 +318,12 @@ for (let z = 300; z > -SETTINGS.roadLength + 300; z -= 24) {
     }
 
     if (Math.random() < 0.12) {
-      const width = 5 + Math.random() * 8;
-      const height = 8 + Math.random() * 20;
-      const depth = 5 + Math.random() * 8;
-
       createBuilding(
         side * (30 + Math.random() * 15),
         z - Math.random() * 15,
-        width,
-        height,
-        depth,
+        5 + Math.random() * 8,
+        8 + Math.random() * 20,
+        5 + Math.random() * 8,
         buildingMaterials[
           Math.floor(Math.random() * buildingMaterials.length)
         ]
@@ -300,92 +332,55 @@ for (let z = 300; z > -SETTINGS.roadLength + 300; z -= 24) {
   }
 }
 
-// --------------------------------------------
-// 8. CAR MODEL
-// --------------------------------------------
+// ============================================
+// 9. CAR MODEL
+// ============================================
 
 const car = new THREE.Group();
-scene.add(car);
-
 const carBody = new THREE.Group();
+
+scene.add(car);
 car.add(carBody);
 
-// Main chassis.
-const chassis = new THREE.Mesh(
-  new THREE.BoxGeometry(1.9, 0.52, 4.15),
-  materials.body
-);
+function addBox(parent, width, height, depth, material, x, y, z) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, depth),
+    material
+  );
 
-chassis.position.y = 0.72;
-carBody.add(chassis);
+  mesh.position.set(x, y, z);
+  parent.add(mesh);
+
+  return mesh;
+}
+
+// Chassis.
+addBox(carBody, 1.9, 0.52, 4.15, materials.body, 0, 0.72, 0);
 
 // Hood.
-const hood = new THREE.Mesh(
-  new THREE.BoxGeometry(1.75, 0.2, 1.15),
-  materials.body
-);
+addBox(carBody, 1.75, 0.2, 1.15, materials.body, 0, 0.99, -1.35);
 
-hood.position.set(0, 0.99, -1.35);
-carBody.add(hood);
+// Cabin and roof.
+addBox(carBody, 1.43, 0.7, 1.85, materials.glass, 0, 1.25, 0.05);
+addBox(carBody, 1.28, 0.12, 1.05, materials.body, 0, 1.62, 0.12);
 
-// Cabin.
-const cabin = new THREE.Mesh(
-  new THREE.BoxGeometry(1.43, 0.7, 1.85),
-  materials.glass
-);
-
-cabin.position.set(0, 1.25, 0.05);
-carBody.add(cabin);
-
-// Roof.
-const roof = new THREE.Mesh(
-  new THREE.BoxGeometry(1.28, 0.12, 1.05),
-  materials.body
-);
-
-roof.position.set(0, 1.62, 0.12);
-carBody.add(roof);
-
-// Front and rear bumpers.
+// Bumpers.
 for (const z of [-2.12, 2.12]) {
-  const bumper = new THREE.Mesh(
-    new THREE.BoxGeometry(1.95, 0.18, 0.18),
-    materials.dark
-  );
-
-  bumper.position.set(0, 0.5, z);
-  carBody.add(bumper);
+  addBox(carBody, 1.95, 0.18, 0.18, materials.dark, 0, 0.5, z);
 }
 
-// Headlights and taillights.
+// Lights.
 for (const x of [-0.65, 0.65]) {
-  const headlight = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.13, 0.06),
-    materials.headlight
-  );
-
-  headlight.position.set(x, 0.88, -2.12);
-  carBody.add(headlight);
-
-  const taillight = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.13, 0.06),
-    materials.taillight
-  );
-
-  taillight.position.set(x, 0.88, 2.12);
-  carBody.add(taillight);
+  addBox(carBody, 0.38, 0.13, 0.06, materials.headlight, x, 0.88, -2.12);
+  addBox(carBody, 0.38, 0.13, 0.06, materials.taillight, x, 0.88, 2.12);
 }
 
-// Wheels rotate as the car moves.
 const wheels = [];
 const frontWheels = [];
 
 function createWheel(x, z, isFront) {
   const pivot = new THREE.Group();
   pivot.position.set(x, 0.43, z);
-
-  if (isFront) frontWheels.push(pivot);
-
   car.add(pivot);
 
   const tire = new THREE.Mesh(
@@ -405,6 +400,10 @@ function createWheel(x, z, isFront) {
   pivot.add(rim);
 
   wheels.push(pivot);
+
+  if (isFront) {
+    frontWheels.push(pivot);
+  }
 }
 
 createWheel(-0.98, -1.35, true);
@@ -414,9 +413,9 @@ createWheel(0.98, 1.35, false);
 
 car.position.set(0, 0, 0);
 
-// --------------------------------------------
-// 9. INPUT: KEYBOARD AND TOUCH
-// --------------------------------------------
+// ============================================
+// 10. KEYBOARD CONTROLS
+// ============================================
 
 const keyMap = {
   ArrowUp: "gas",
@@ -455,32 +454,35 @@ window.addEventListener("keyup", event => {
   }
 });
 
-window.addEventListener("blur", releaseControls);
-
 function releaseControls() {
-  controls.gas = false;
-  controls.brake = false;
-  controls.left = false;
-  controls.right = false;
+  Object.keys(controls).forEach(key => {
+    controls[key] = false;
+  });
 
   document.querySelectorAll(".control-btn").forEach(button => {
     button.classList.remove("active");
   });
 }
 
-// Hold-to-drive touch controls.
+window.addEventListener("blur", releaseControls);
+
+// ============================================
+// 11. TOUCH CONTROLS
+// ============================================
+
 document.querySelectorAll("[data-control]").forEach(button => {
   const action = button.dataset.control;
 
   function startControl(event) {
     event.preventDefault();
+
     controls[action] = true;
     button.classList.add("active");
 
     try {
       button.setPointerCapture(event.pointerId);
     } catch {
-      // Pointer capture may be unavailable on some browsers.
+      // Pointer capture is optional.
     }
   }
 
@@ -493,6 +495,7 @@ document.querySelectorAll("[data-control]").forEach(button => {
   button.addEventListener("pointerdown", startControl);
   button.addEventListener("pointerup", stopControl);
   button.addEventListener("pointercancel", stopControl);
+
   button.addEventListener("lostpointercapture", () => {
     controls[action] = false;
     button.classList.remove("active");
@@ -503,20 +506,91 @@ document.querySelectorAll("[data-control]").forEach(button => {
   });
 });
 
-// --------------------------------------------
-// 10. CAMERA MODES
-// --------------------------------------------
+// ============================================
+// 12. MOBILE TILT STEERING
+// ============================================
 
-const cameraModes = [
-  "خلف السيارة",
-  "داخل السيارة",
-  "مقدمة السيارة",
-  "سينمائية"
-];
+function handleDeviceOrientation(event) {
+  if (!tiltEnabled || event.gamma === null) return;
+
+  const gamma = THREE.MathUtils.clamp(
+    event.gamma / 25,
+    -1,
+    1
+  );
+
+  tiltSteering = Math.abs(gamma) < 0.08 ? 0 : gamma;
+}
+
+async function toggleTiltControl() {
+  if (tiltEnabled) {
+    tiltEnabled = false;
+    tiltSteering = 0;
+
+    tiltButton.textContent = "📱 إمالة الهاتف: OFF";
+    tiltButton.classList.remove("enabled");
+
+    window.removeEventListener(
+      "deviceorientation",
+      handleDeviceOrientation
+    );
+
+    return;
+  }
+
+  if (
+    typeof DeviceOrientationEvent !== "undefined" &&
+    typeof DeviceOrientationEvent.requestPermission === "function"
+  ) {
+    try {
+      const permission =
+        await DeviceOrientationEvent.requestPermission();
+
+      if (permission !== "granted") {
+        directionElement.textContent =
+          "لم يتم السماح باستخدام مستشعر الهاتف";
+        return;
+      }
+    } catch (error) {
+      console.warn("Tilt permission error:", error);
+      directionElement.textContent =
+        "تعذر تفعيل مستشعر الهاتف";
+      return;
+    }
+  }
+
+  if (!("DeviceOrientationEvent" in window)) {
+    directionElement.textContent =
+      "المتصفح لا يدعم إمالة الهاتف";
+    return;
+  }
+
+  tiltEnabled = true;
+
+  window.addEventListener(
+    "deviceorientation",
+    handleDeviceOrientation
+  );
+
+  tiltButton.textContent = "📱 إمالة الهاتف: ON";
+  tiltButton.classList.add("enabled");
+
+  directionElement.textContent =
+    "أمل الهاتف يمينًا أو يسارًا للتوجيه";
+}
+
+tiltButton.addEventListener("click", toggleTiltControl);
+
+// ============================================
+// 13. CAMERA
+// ============================================
 
 function cycleCamera() {
   cameraMode = (cameraMode + 1) % cameraModes.length;
+
   cameraButton.textContent = `📷 ${cameraModes[cameraMode]}`;
+
+  saveSettings();
 }
 
 cameraButton.addEventListener("click", cycleCamera);
@@ -532,7 +606,6 @@ function updateCamera(delta) {
   const target = car.position.clone();
 
   if (cameraMode === 0) {
-    // Third-person chase camera.
     desiredPosition.copy(car.position)
       .addScaledVector(forward, -8);
 
@@ -541,7 +614,6 @@ function updateCamera(delta) {
     target.y += 1.0;
 
   } else if (cameraMode === 1) {
-    // Approximate cockpit camera.
     desiredPosition.copy(car.position)
       .addScaledVector(forward, 0.45);
 
@@ -550,7 +622,6 @@ function updateCamera(delta) {
     target.y += 1.2;
 
   } else if (cameraMode === 2) {
-    // Front bumper camera.
     desiredPosition.copy(car.position)
       .addScaledVector(forward, 3.2);
 
@@ -559,7 +630,6 @@ function updateCamera(delta) {
     target.y += 1.0;
 
   } else {
-    // Cinematic high-angle camera.
     desiredPosition.copy(car.position)
       .addScaledVector(forward, -11);
 
@@ -573,50 +643,55 @@ function updateCamera(delta) {
   camera.lookAt(target);
 }
 
-// --------------------------------------------
-// 11. GEAR AND RESET
-// --------------------------------------------
+// ============================================
+// 14. GEAR AND RESET
+// ============================================
 
 gearButton.addEventListener("click", () => {
   reverseGear = !reverseGear;
 
-  // Avoid a sudden direction change at speed.
   speed = 0;
   gearElement.textContent = reverseGear ? "R" : "D";
+  gearInfo.textContent = reverseGear ? "REVERSE" : "AUTOMATIC";
 
   directionElement.textContent = reverseGear
     ? "وضع الرجوع للخلف"
     : "وضع القيادة للأمام";
+
+  saveSettings();
 });
 
 function resetCar() {
   car.position.set(0, 0, 0);
   car.rotation.set(0, 0, 0);
+  carBody.rotation.set(0, 0, 0);
 
   speed = 0;
   steeringAngle = 0;
   reverseGear = false;
 
   gearElement.textContent = "D";
+  gearInfo.textContent = "AUTOMATIC";
   directionElement.textContent = "جاهز للانطلاق";
 
   releaseControls();
+  saveSettings();
 }
 
 resetButton.addEventListener("click", resetCar);
 
-// --------------------------------------------
-// 12. DRIVING PHYSICS
-// --------------------------------------------
+// ============================================
+// 15. DRIVING PHYSICS
+// ============================================
 
 function updateDriving(delta) {
-  // Forward or reverse acceleration.
+  // Acceleration.
   if (controls.gas) {
     const direction = reverseGear ? -1 : 1;
     speed += SETTINGS.acceleration * direction * delta;
   }
 
-  // Braking reduces the current speed toward zero.
+  // Braking.
   if (controls.brake) {
     if (Math.abs(speed) > 0.15) {
       speed -= Math.sign(speed) * SETTINGS.braking * delta;
@@ -625,9 +700,11 @@ function updateDriving(delta) {
     }
   }
 
-  // Natural rolling resistance.
+  // Natural drag.
   if (!controls.gas && !controls.brake) {
-    const reduction = SETTINGS.drag * delta;
+    const reduction =
+      (SETTINGS.drag * Math.min(Math.abs(speed), 1) +
+       SETTINGS.rollingResistance) * delta;
 
     if (Math.abs(speed) <= reduction) {
       speed = 0;
@@ -636,25 +713,28 @@ function updateDriving(delta) {
     }
   }
 
-  // Speed limits for forward and reverse driving.
-  const maxReverseSpeed = 35 / 3.6;
-  const maxForwardSpeed = SETTINGS.maxSpeed / 3.6;
-
+  // Speed limits.
   speed = THREE.MathUtils.clamp(
     speed,
-    -maxReverseSpeed,
-    maxForwardSpeed
+    -SETTINGS.maxReverseSpeed,
+    SETTINGS.maxSpeed
   );
 
-  const speedRatio = Math.min(
-    Math.abs(speed) / maxForwardSpeed,
+  // Keyboard steering + optional phone tilt.
+  const keyboardSteering =
+    Number(controls.left) - Number(controls.right);
+
+  const steeringInput = THREE.MathUtils.clamp(
+    keyboardSteering + (tiltEnabled ? tiltSteering : 0),
+    -1,
     1
   );
 
-  const steeringInput =
-    Number(controls.left) - Number(controls.right);
+  const speedRatio = Math.min(
+    Math.abs(speed) / SETTINGS.maxSpeed,
+    1
+  );
 
-  // Steering is less responsive when stationary.
   const steeringStrength = Math.min(
     Math.abs(speed) / 3,
     1
@@ -667,13 +747,14 @@ function updateDriving(delta) {
     delta
   );
 
-  // Reverse steering direction when moving backwards.
+  // Vehicle yaw.
   car.rotation.y +=
     steeringAngle *
     steeringStrength *
     Math.sign(speed) *
     delta;
 
+  // Move the vehicle in its facing direction.
   const forward = new THREE.Vector3(
     Math.sin(car.rotation.y),
     0,
@@ -682,8 +763,9 @@ function updateDriving(delta) {
 
   car.position.addScaledVector(forward, speed * delta);
 
-  // Small body roll when steering.
-  const targetRoll = -steeringAngle * speedRatio * 0.08;
+  // Body roll.
+  const targetRoll =
+    -steeringAngle * speedRatio * 0.08;
 
   carBody.rotation.z = THREE.MathUtils.damp(
     carBody.rotation.z,
@@ -692,17 +774,16 @@ function updateDriving(delta) {
     delta
   );
 
-  // Rotate wheels as the vehicle moves.
+  // Wheel rotation and front steering angle.
   for (const wheel of wheels) {
     wheel.rotation.x -= speed * delta / 0.39;
   }
 
-  // Front wheels visually turn with the steering input.
   for (const wheel of frontWheels) {
     wheel.rotation.y = -steeringAngle * 0.5;
   }
 
-  // Keep the car within a simple road boundary.
+  // Road boundaries.
   const roadLimit = SETTINGS.roadWidth / 2 - 1.15;
 
   if (Math.abs(car.position.x) > roadLimit) {
@@ -715,13 +796,14 @@ function updateDriving(delta) {
     speed *= 0.985;
   }
 
-  // Update HUD.
+  // Speedometer.
   const speedKmh = Math.round(Math.abs(speed) * 3.6);
 
-  speedElement.textContent = String(speedKmh).padStart(3, "0");
+  speedElement.textContent =
+    String(speedKmh).padStart(3, "0");
 
   speedBar.style.width =
-    `${Math.min(speedKmh / SETTINGS.maxSpeed * 100, 100)}%`;
+    `${Math.min(speedKmh / 220 * 100, 100)}%`;
 
   if (speedKmh > 2) {
     directionElement.textContent = reverseGear
@@ -732,26 +814,44 @@ function updateDriving(delta) {
   }
 }
 
-// --------------------------------------------
-// 13. RESIZE
-// --------------------------------------------
+// ============================================
+// 16. RESTORE SETTINGS
+// ============================================
+
+if (
+  Number.isInteger(savedSettings.cameraMode) &&
+  savedSettings.cameraMode >= 0 &&
+  savedSettings.cameraMode < cameraModes.length
+) {
+  cameraMode = savedSettings.cameraMode;
+}
+
+reverseGear = savedSettings.reverseGear === true;
+
+cameraButton.textContent = `📷 ${cameraModes[cameraMode]}`;
+gearElement.textContent = reverseGear ? "R" : "D";
+gearInfo.textContent = reverseGear ? "REVERSE" : "AUTOMATIC";
+
+// ============================================
+// 17. RESIZE
+// ============================================
 
 function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
-
   camera.updateProjectionMatrix();
 
   renderer.setSize(window.innerWidth, window.innerHeight);
+
   renderer.setPixelRatio(
-    Math.min(window.devicePixelRatio || 1, 1.5)
+    Math.min(window.devicePixelRatio || 1, SETTINGS.maxPixelRatio)
   );
 }
 
 window.addEventListener("resize", handleResize);
 
-// --------------------------------------------
-// 14. GAME LOOP
-// --------------------------------------------
+// ============================================
+// 18. GAME LOOP
+// ============================================
 
 const clock = new THREE.Clock();
 
@@ -760,21 +860,18 @@ function animate() {
 
   const delta = Math.min(clock.getDelta(), 0.04);
 
-  elapsedTime += delta;
-
   updateDriving(delta);
   updateCamera(delta);
 
   renderer.render(scene, camera);
 }
 
-// --------------------------------------------
-// 15. START GAME
-// --------------------------------------------
+// ============================================
+// 19. START
+// ============================================
 
 try {
   updateCamera(1);
-
   renderer.render(scene, camera);
   animate();
 
@@ -789,5 +886,5 @@ try {
 
   errorElement.hidden = false;
   errorElement.textContent =
-    "Failed to start the game. Check browser WebGL support and internet connection.";
+    "Failed to start the game. Check WebGL support and internet connection.";
 }
