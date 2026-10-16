@@ -1,8 +1,3 @@
-
-/* ========================================
-   VOLTX Racing — Main Styles
-   ======================================== */
-
 :root {
   color-scheme: dark;
   --accent: #00e5ff;
@@ -37,11 +32,11 @@ button {
 
 #game {
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: 100%;
   height: 100dvh;
   overflow: hidden;
-  isolation: isolate;
   background: #8cc7e8;
 }
 
@@ -51,7 +46,6 @@ button {
   width: 100%;
   height: 100%;
   display: block;
-  z-index: -1;
 }
 
 #loading {
@@ -78,6 +72,7 @@ button {
 
 .topbar {
   position: absolute;
+  z-index: 2;
   top: max(16px, env(safe-area-inset-top));
   left: 16px;
   right: 16px;
@@ -142,6 +137,7 @@ button {
   font-size: 12px;
   font-weight: 700;
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .glass-btn:active {
@@ -151,6 +147,7 @@ button {
 
 .hud {
   position: absolute;
+  z-index: 2;
   top: 88px;
   left: 16px;
   right: 16px;
@@ -203,6 +200,13 @@ button {
   font-weight: 900;
 }
 
+.gear-info {
+  margin-top: 7px;
+  color: #9aafc7;
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+
 .speed-track {
   height: 4px;
   margin-top: 8px;
@@ -250,6 +254,7 @@ button {
 
 .controls {
   position: absolute;
+  z-index: 3;
   left: 18px;
   right: 18px;
   bottom: max(24px, env(safe-area-inset-bottom));
@@ -319,6 +324,7 @@ button {
 
 .utility-buttons {
   position: absolute;
+  z-index: 3;
   right: 16px;
   bottom: 145px;
   display: flex;
@@ -331,8 +337,15 @@ button {
   padding: 0 10px;
 }
 
+#tiltBtn.enabled {
+  background: rgba(0, 190, 220, 0.25);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .bottom-info {
   position: absolute;
+  z-index: 2;
   left: 16px;
   bottom: 125px;
   display: flex;
@@ -341,6 +354,7 @@ button {
   padding: 9px 12px;
   font-size: 9px;
   letter-spacing: 1px;
+  pointer-events: none;
 }
 
 .bottom-info b {
