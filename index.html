@@ -1,27 +1,29 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#080d16" />
-  <meta name="description" content="VOLTX Racing — 3D driving game prototype" />
-  <title>VOLTX Racing | Prototype v0.1</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#080d16">
+  <meta name="description" content="VOLTX Racing 3D driving simulator">
+  <title>VOLTX Racing | v0.2</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <main id="game">
-    <div id="loading">VOLTX RACING <span>جاري تجهيز الحلبة...</span></div>
+    <div id="loading">
+      VOLTX RACING
+      <span>جاري تجهيز السيارة...</span>
+    </div>
 
     <header class="topbar">
       <div class="brand">
         <span class="brand-icon">V</span>
         <div>
           <strong>VOLTX <span>RACING</span></strong>
-          <small>DRIVING SIMULATOR · V0.1</small>
+          <small>DRIVING SIMULATOR · V0.2</small>
         </div>
       </div>
-      <button id="cameraBtn" class="glass-btn">📷 الكاميرا</button>
+      <button id="cameraBtn" class="glass-btn">📷 خلف السيارة</button>
     </header>
 
     <section class="hud">
@@ -31,12 +33,18 @@
           <strong id="speed">000</strong>
           <span class="gear" id="gear">D</span>
         </div>
-        <div class="speed-track"><div id="speedBar"></div></div>
+        <div class="speed-track">
+          <div id="speedBar"></div>
+        </div>
+        <div class="gear-info" id="gearInfo">AUTOMATIC</div>
       </div>
 
       <div class="status-card glass">
         <span class="status-dot"></span>
-        <div><strong>FREE DRIVE</strong><small>وضع القيادة الحرة</small></div>
+        <div>
+          <strong>FREE DRIVE</strong>
+          <small>وضع القيادة الحرة</small>
+        </div>
       </div>
     </section>
 
@@ -50,15 +58,20 @@
         <button class="control-btn steering-btn" data-control="left" aria-label="يسار">◀</button>
         <button class="control-btn steering-btn" data-control="right" aria-label="يمين">▶</button>
       </div>
+
       <div class="pedals">
         <button class="control-btn brake-btn" data-control="brake">فرامل</button>
-        <button class="control-btn gas-btn" data-control="gas">▲<span>بنزين</span></button>
+        <button class="control-btn gas-btn" data-control="gas">
+          ▲
+          <span>بنزين</span>
+        </button>
       </div>
     </section>
 
     <div class="utility-buttons">
       <button id="resetBtn" class="glass-btn">↺ إعادة السيارة</button>
       <button id="gearBtn" class="glass-btn">D / R</button>
+      <button id="tiltBtn" class="glass-btn">📱 إمالة الهاتف: OFF</button>
     </div>
 
     <div id="error" hidden></div>
