@@ -1,0 +1,485 @@
+
+/* ========================================
+   VOLTX Racing — Main Styles
+   ======================================== */
+
+:root {
+  color-scheme: dark;
+  --accent: #00e5ff;
+  --bg: #080d16;
+  --glass: rgba(8, 15, 27, 0.78);
+  --text: #f4f8ff;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Tahoma, sans-serif;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  touch-action: none;
+}
+
+#game {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+  background: #8cc7e8;
+}
+
+#game canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: -1;
+}
+
+#loading {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  text-align: center;
+  background: #080d16;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  transition: opacity 0.5s;
+}
+
+#loading span {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #aab8cb;
+}
+
+.topbar {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  color: #001017;
+  background: var(--accent);
+  font-size: 27px;
+  font-weight: 1000;
+  font-style: italic;
+  border-radius: 12px;
+  box-shadow: 0 0 24px #00e5ff55;
+}
+
+.brand strong {
+  display: block;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+.brand strong span {
+  color: var(--accent);
+}
+
+.brand small {
+  display: block;
+  margin-top: 4px;
+  color: #d4e1f0;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.glass {
+  background: var(--glass);
+  border: 1px solid #ffffff24;
+  border-radius: 15px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-btn {
+  min-height: 42px;
+  padding: 0 14px;
+  background: var(--glass);
+  border: 1px solid #ffffff30;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(10px);
+}
+
+.glass-btn:active {
+  border-color: var(--accent);
+  transform: scale(0.97);
+}
+
+.hud {
+  position: absolute;
+  top: 88px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  direction: ltr;
+  pointer-events: none;
+}
+
+.speed-card {
+  width: 170px;
+  padding: 12px 14px;
+}
+
+.speed-label {
+  color: #c4d1e3;
+  font-size: 11px;
+}
+
+.speed-label span {
+  margin-left: 5px;
+  color: var(--accent);
+  font-size: 9px;
+}
+
+.speed-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.speed-line strong {
+  font-size: 42px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -2px;
+}
+
+.gear {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--accent);
+  border: 1px solid #00e5ff60;
+  border-radius: 9px;
+  font-weight: 900;
+}
+
+.speed-track {
+  height: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+  background: #ffffff20;
+  border-radius: 10px;
+}
+
+#speedBar {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  transition: width 0.1s linear;
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px;
+  direction: ltr;
+}
+
+.status-card strong {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.status-card small {
+  display: block;
+  margin-top: 4px;
+  color: #aebbd0;
+  font-size: 9px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: #62ff9b;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #62ff9b;
+}
+
+.controls {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  direction: ltr;
+}
+
+.steering,
+.pedals {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.control-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ffffff40;
+  background: rgba(9, 17, 30, 0.76);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.08s, transform 0.08s;
+}
+
+.control-btn.active,
+.control-btn:active {
+  background: #00b9d9a8;
+  border-color: var(--accent);
+  transform: scale(0.94);
+}
+
+.steering-btn {
+  width: 62px;
+  height: 62px;
+  border-radius: 19px;
+  font-size: 24px;
+}
+
+.brake-btn {
+  width: 64px;
+  height: 74px;
+  border-radius: 18px;
+  color: #ff7777;
+  border-color: #ff777755;
+  font-size: 12px;
+}
+
+.gas-btn {
+  width: 76px;
+  height: 94px;
+  gap: 5px;
+  border-radius: 22px;
+  color: var(--accent);
+  border-color: #00e5ff80;
+  font-size: 28px;
+}
+
+.gas-btn span {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.utility-buttons {
+  position: absolute;
+  right: 16px;
+  bottom: 145px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.utility-buttons .glass-btn {
+  font-size: 11px;
+  padding: 0 10px;
+}
+
+.bottom-info {
+  position: absolute;
+  left: 16px;
+  bottom: 125px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 12px;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.bottom-info b {
+  color: var(--accent);
+}
+
+#direction {
+  color: #c6d4e5;
+  letter-spacing: 0;
+}
+
+#error {
+  position: absolute;
+  inset: 20px;
+  z-index: 30;
+  height: fit-content;
+  padding: 16px;
+  color: #ffb5b5;
+  background: #351717;
+  border-radius: 12px;
+  direction: ltr;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 420px) {
+  .topbar {
+    left: 10px;
+    right: 10px;
+  }
+
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand strong {
+    font-size: 13px;
+  }
+
+  .glass-btn {
+    min-height: 38px;
+    padding: 0 10px;
+  }
+
+  .hud {
+    top: 76px;
+    left: 10px;
+    right: 10px;
+  }
+
+  .speed-card {
+    width: 145px;
+    padding: 10px;
+  }
+
+  .speed-line strong {
+    font-size: 36px;
+  }
+
+  .status-card {
+    padding: 9px;
+  }
+
+  .controls {
+    left: 10px;
+    right: 10px;
+    gap: 8px;
+  }
+
+  .steering,
+  .pedals {
+    gap: 7px;
+  }
+
+  .steering-btn {
+    width: 54px;
+    height: 58px;
+  }
+
+  .brake-btn {
+    width: 54px;
+    height: 68px;
+  }
+
+  .gas-btn {
+    width: 65px;
+    height: 84px;
+  }
+
+  .utility-buttons {
+    right: 10px;
+    bottom: 130px;
+  }
+
+  .bottom-info {
+    left: 10px;
+    bottom: 115px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .topbar {
+    top: 8px;
+  }
+
+  .hud {
+    top: 60px;
+  }
+
+  .speed-card {
+    padding: 7px 10px;
+  }
+
+  .speed-line strong {
+    font-size: 29px;
+  }
+
+  .controls {
+    bottom: 12px;
+  }
+
+  .steering-btn {
+    width: 52px;
+    height: 50px;
+  }
+
+  .brake-btn {
+    height: 54px;
+  }
+
+  .gas-btn {
+    height: 64px;
+  }
+
+  .utility-buttons {
+    bottom: 100px;
+  }
+
+  .bottom-info {
+    bottom: 95px;
+  }
+}
